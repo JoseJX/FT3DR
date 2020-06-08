@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+import sys
+
+# Metadata values are stored in base 10, 2 digits, 1 nibble per digit
+# There's probably a better way to do this
+def nib2int(v):
+    val = 10 * ((v & 0xF0) >> 4)
+    val = val + (v & 0xF)
+    return int(val)
+
+# Make sure the user passed something in
+if (len(sys.argv) != 2):
+    print("Usage: aprs_extractor <backup file>")
+    sys.exit(-1)
+
+# Open the file
+f = open(sys.argv[1], "rb")
+
+#########################
+### Known file structures
+#########################
+# 0x0FEC0: APRS Packet metadata, each uses 0x20, 60 slots
+#  Data format:
+#   The following are stored as base 10, one nibble per digit
+#   0x00: Year, 
+#   0x01: Month
+#   0x02: Day
+#   0x03: Hour
+#   0x04: Minute
+#   0x05-0x07: Padding
+#   0x08-0x16: Station Name
+#   0x17-0x1F: Haven't figured this out yet
+
+# 0x10640: RX'd APRS Packets, each packet is 0xB0 bytes, 60 slots
+#  Packet format:
+#   0x00: Header
+#   0x0A: Sending station
+#   0x13: Sending station Radio Type
+#   0x14: Destination station
+#   0x1D: Destination station Radio Type
+#   0x1E: Routing info
+#   0x2A: Start of RX'd Data Payload
+
+# Read each of the slots
+for i in range(0,60):
+    # Move to the packet offset
+    f.seek(0x10640 + i * 0xB0)
+    print(hex(0x10640 + i * 0xB0))
+
+    pkt = f.read(0xB0)
+    # Packets that start with 0xFF appear to be invalid
+    if (pkt[0] == 0xFF):
+        continue
+    
+    # Read in the metadata
+    f.seek(0xFEC0 + i * 0x20)
+    meta = f.read(0x20)
+    year = 2000 + nib2int(meta[0])
+    month = nib2int(meta[1])
+    day = nib2int(meta[2])
+    hour = nib2int(meta[3])
+    minute = nib2int(meta[4])
+    sid = meta[8:22]
+    sid = sid.decode('ascii')
+    sid = sid.replace(" ", "")
+    # I'm not sure about the rest yet
+
+    # Just print out the metadata for now
+    print(f'{i:02d}.pkt,{sid},{year:04d}/{month:02d}/{day:02d},{hour:02d}:{minute:02d}')
+
+    # Dump to a file
+    fn = f'{i:02d}' + (".pkt")
+    outf = open(fn, "wb")
+
+    # Figure out how long the packet is
+    pktEnd = pkt.index(0xFF)
+    
+    # Get the 9 byte chunk
+    hdrEnd = pkt.index(0x20)
+    if (hdrEnd > 9):
+        hdrEnd = 9
+    hdr = pkt[0:hdrEnd]
+    hdr = hdr.decode('ascii', 'ignore')
+
+    # Extract the originating station
+    orig = pkt[10:19]
+    orig = orig.decode('ascii', 'ignore')
+    orig = orig.replace(" ", "")
+    otype = pkt[20]
+
+    # Extract the destination station
+    dest = pkt[20:29]
+    print(dest)
+    dest = dest.decode('ascii', 'ignore')
+    dest = dest.replace(" ", "")
+    dtype = pkt[30]
+
+    # Extract the routing information
+    route = pkt[31:40]
+    #route = route.decode('ascii', 'ignore')
+    #route = route.replace(" ", "")
+    #print(route)
+
+    # Extract the payload
+    payload = pkt[42:pktEnd]
+
+    data = f'{orig}>{hdr},{dest},,,,:'
+    outf.write(data.encode('ascii'))
+    outf.write(payload)
+    outf.close()
+f.close()
