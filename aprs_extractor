@@ -45,7 +45,6 @@ f = open(sys.argv[1], "rb")
 for i in range(0,60):
     # Move to the packet offset
     f.seek(0x10640 + i * 0xB0)
-    print(hex(0x10640 + i * 0xB0))
 
     pkt = f.read(0xB0)
     # Packets that start with 0xFF appear to be invalid
@@ -72,9 +71,6 @@ for i in range(0,60):
     fn = f'{i:02d}' + (".pkt")
     outf = open(fn, "wb")
 
-    # Figure out how long the packet is
-    pktEnd = pkt.index(0xFF)
-    
     # Get the 9 byte chunk
     hdrEnd = pkt.index(0x20)
     if (hdrEnd > 9):
@@ -90,7 +86,6 @@ for i in range(0,60):
 
     # Extract the destination station
     dest = pkt[20:29]
-    print(dest)
     dest = dest.decode('ascii', 'ignore')
     dest = dest.replace(" ", "")
     dtype = pkt[30]
@@ -102,7 +97,13 @@ for i in range(0,60):
     #print(route)
 
     # Extract the payload
-    payload = pkt[42:pktEnd]
+    pld = pkt[42:176]
+
+    # Figure out how long the payload is
+    pldEnd = pld.index(0xFF)
+
+    # Extract the payload
+    payload = pld[0:pldEnd]
 
     data = f'{orig}>{hdr},{dest},,,,:'
     outf.write(data.encode('ascii'))
