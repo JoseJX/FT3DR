@@ -39,6 +39,8 @@ f = open(sys.argv[1], "rb")
 #   0x14: Destination station
 #   0x1D: Destination station Radio Type
 #   0x1E: Routing info
+#   0x28: Control Field (always 0x03)
+#   0x29: Protocol ID (always 0xF0)
 #   0x2A: Start of RX'd Data Payload
 
 # Read each of the slots
@@ -91,10 +93,10 @@ for i in range(0,60):
     dtype = pkt[30]
 
     # Extract the routing information
-    route = pkt[31:40]
-    #route = route.decode('ascii', 'ignore')
-    #route = route.replace(" ", "")
-    #print(route)
+    route = pkt[30:40]
+    route = route.decode('ascii', 'ignore')
+    route = route.replace(" ", "")
+    #print("Route:",route)
 
     # Extract the payload
     pld = pkt[42:176]
