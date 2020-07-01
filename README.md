@@ -1,6 +1,6 @@
 # FT3DR
 Tools for working with the FT3DR
-Joe Jezak (KC3PIL)
+Joe Jezak (AC3GA)
 
 aprs_extractor - A tool to extract APRS information from an FT3D backup file
   Usage:
